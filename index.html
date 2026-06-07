@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>交易帳本 <span style="font-size:13px;opacity:0.4;font-weight:400">Record</span></title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    min-height: 100vh;
+    background: #1a1a1a;
+    font-family: 'Courier New', monospace;
+    color: #E0F0FF;
+    padding: 16px 12px 40px;
+  }
+  input[type=number] { -webkit-appearance: none; -moz-appearance: textfield; }
+  input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .container { max-width: 900px; margin: 0 auto; }
+
+  /* Header */
+  .page-label { color: #1e2a35; font-size: 9px; letter-spacing: .25em; margin-bottom: 4px; }
+  .page-title { color: #E8F4FD; font-size: 22px; font-weight: 800; letter-spacing: .04em; }
+  .save-status { font-size: 10px; letter-spacing: .05em; }
+  .header-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .tag-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+  .tag { border-radius: 20px; padding: 3px 12px; font-size: 10px; }
+  .btn-row { margin-left: auto; display: flex; gap: 8px; }
+  .btn { border-radius: 8px; padding: 6px 14px; font-size: 10px; font-weight: 700; cursor: pointer; font-family: inherit; letter-spacing: .05em; border: none; }
+  .divider-rainbow { height: 1px; background: linear-gradient(90deg, #4FC3F7, #81C784, #FFB74D, transparent); margin-top: 14px; opacity: .3; }
+
+  /* Main block */
+  .main-block { border-radius: 16px; margin-bottom: 20px; }
+  .main-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; border-radius: 16px 16px 0 0; cursor: pointer; user-select: none; }
+  .main-title { font-size: 18px; font-weight: 800; }
+  .main-sub { font-size: 10px; letter-spacing: .15em; margin-left: 8px; }
+  .main-count { font-size: 10px; color: #37474F; margin-left: 8px; }
+  .main-body { padding: 14px 16px; }
+  .add-asset-bar { padding: 10px 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; border-bottom-width: 1px; border-bottom-style: solid; }
+  .add-asset-bar input { border-radius: 6px; padding: 6px 10px; color: #E0F0FF; font-size: 12px; font-family: inherit; outline: none; width: 160px; border-width: 1px; border-style: solid; }
+  .empty-msg { text-align: center; color: #263238; padding: 28px 0; font-size: 12px; }
+
+  /* Asset block */
+  .asset-block { border-radius: 10px; margin-bottom: 10px; overflow: hidden; }
+  .asset-header { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; cursor: pointer; user-select: none; }
+  .asset-name { font-size: 15px; font-weight: 800; letter-spacing: .06em; }
+  .pnl-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; margin-left: 8px; }
+  .asset-body { padding: 14px; }
+  .section-divider { height: 1px; background: rgba(255,255,255,.07); margin: 12px 0; }
+
+  /* Buy/Sell blocks */
+  .section-label { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .section-bar { width: 3px; height: 14px; border-radius: 2px; }
+  .section-title { font-size: 12px; font-weight: 700; letter-spacing: .15em; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { border-collapse: collapse; table-layout: auto; white-space: nowrap; }
+  th { padding: 5px 10px; text-align: left; font-weight: 600; font-size: 11px; color: #546E7A; white-space: nowrap; }
+  td { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,.03); white-space: nowrap; overflow: hidden; }
+  td.notes-td { white-space: nowrap; }
+  td input {
+    background: transparent; border: none; outline: none;
+    color: #E0F0FF; font-size: 13px; width: 100%;
+    font-family: inherit; padding: 4px 8px;
+    -webkit-appearance: none;
+    display: block; box-sizing: border-box;
+  }
+  td input[readonly] { color: #A5D6A7; background: rgba(255,255,255,.04); border-radius: 3px; cursor: default; }
+  td input[type=date] { font-size: 12px; color: #E0F0FF; }
+  td input[type=date]::-webkit-date-and-time-value { text-align: left; }
+  td input::placeholder { color: #2a3a4a; }
+  .section-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; flex-wrap: wrap; gap: 6px; }
+  .avg-cost-box { background: rgba(76,175,80,.12); border: 1px solid rgba(76,175,80,.3); border-radius: 6px; padding: 4px 10px; font-size: 12px; width: 100%; display:flex; align-items:center; }
+  .avg-cost-label { color: #546E7A; margin-right: 5px; }
+  .avg-cost-val { color: #A5D6A7; font-weight: 700; }
+  .avg-cost-cur { color: #37474F; font-size: 9px; margin-left: 3px; }
+  .add-row-btn { background: transparent; border-radius: 6px; padding: 4px 12px; font-size: 12px; cursor: pointer; font-family: inherit; letter-spacing: .1em; border-width: 1px; border-style: dashed; }
+  .del-btn { background: none; border: none; color: #37474F; cursor: pointer; font-size: 12px; padding: 2px 5px; font-family: inherit; }
+  .del-btn:hover { color: #EF5350; }
+  .delete-asset-btn { background: none; border: 1px solid #37474F; color: #37474F; border-radius: 5px; padding: 3px 8px; font-size: 10px; cursor: pointer; font-family: inherit; }
+  .delete-asset-btn:hover { color: #EF5350; border-color: #EF5350; }
+  .add-main-btn { border-radius: 8px; padding: 6px 14px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; border-width: 1px; border-style: solid; }
+  .confirm-btn { color: #000; border: none; border-radius: 6px; padding: 6px 14px; font-weight: 700; font-size: 11px; cursor: pointer; font-family: inherit; }
+  .cancel-btn { background: transparent; border: 1px solid #37474F; color: #546E7A; border-radius: 6px; padding: 6px 10px; font-size: 11px; cursor: pointer; font-family: inherit; }
+  .arrow { font-size: 12px; margin-right: 4px; }
+  .pnl-cell { text-align: right; font-weight: 700; font-size: 13px; padding: 4px 6px; }
+  .footer-note { text-align: center; color: #1a2030; font-size: 9px; letter-spacing: .1em; padding-top: 16px; }
+</style>
+</head>
+<body>
+<div class="container" id="app"></div>
+
+<script>
+const STORAGE_KEY = 'trading_ledger_v1';
+const BLOCKS = [
+  { id:'crypto', label:'加密貨幣', sub:'Crypto',   accent:'#4FC3F7', glow:'rgba(79,195,247,0.12)',  dark:'#060e17', currency:'USDT', qtyLabel:'顆數 <span style="font-size:8px;opacity:0.5">Qty</span>' },
+  { id:'tw',     label:'台股',     sub:'TW Stock', accent:'#81C784', glow:'rgba(129,199,132,0.12)', dark:'#060f06', currency:'TWD',  qtyLabel:'股數 <span style="font-size:8px;opacity:0.5">Shares</span>' },
+  { id:'us',     label:'美股',     sub:'US Stock', accent:'#FFB74D', glow:'rgba(255,183,77,0.12)',  dark:'#110d00', currency:'USD',  qtyLabel:'股數 <span style="font-size:8px;opacity:0.5">Shares</span>' },
+];
+
+// ── State ──
+let data = { crypto: [], tw: [], us: [] };
+let saveTimer = null;
+let addingBlock = null; // block id currently showing add-asset bar
+
+function uid() {
+  return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+}
+function emptyBuyRow()  { return { id: uid(), date:'', buyPrice:'', buyQty:'', reason:'' }; }
+function emptySellRow() { return { id: uid(), date:'', sellQty:'', sellPrice:'', reason:'' }; }
+function emptyAsset(name) { return { id: uid(), name, buyRows:[], sellRows:[], targetPrice:'' }; }
+
+// ── Persistence ──
+function loadData() {
+  try { const r = localStorage.getItem(STORAGE_KEY); if (r) data = JSON.parse(r); } catch {}
+}
+function saveData() {
+  clearTimeout(saveTimer);
+  updateSaveStatus('saving');
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); updateSaveStatus('saved'); }
+    catch { updateSaveStatus('error'); }
+  }, 600);
+}
+function updateSaveStatus(s) {
+  const el = document.getElementById('save-status');
+  if (!el) return;
+  el.textContent = s === 'saved' ? '✓ 已自動儲存' : s === 'saving' ? '儲存中…' : '⚠ 儲存失敗';
+  el.style.color  = s === 'saved' ? '#4CAF50' : s === 'saving' ? '#FFB74D' : '#EF5350';
+}
+
+// ── Export / Import ──
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type:'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = '交易紀錄備份_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function importJSON(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try { data = JSON.parse(ev.target.result); saveData(); render(); alert('✅ 資料匯入成功！'); }
+    catch { alert('❌ 檔案格式錯誤'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ── Calculations ──
+function calcAvgCost(buyRows) {
+  const valid = buyRows.filter(r => parseFloat(r.buyPrice) > 0 && parseFloat(r.buyQty) > 0);
+  const qty  = valid.reduce((s,r) => s + parseFloat(r.buyQty), 0);
+  const cost = valid.reduce((s,r) => s + parseFloat(r.buyPrice) * parseFloat(r.buyQty), 0);
+  return qty > 0 ? cost / qty : null;
+}
+function calcPnl(sellRows, avgCost) {
+  return sellRows.reduce((s,r) => {
+    const sq = parseFloat(r.sellQty), sp = parseFloat(r.sellPrice);
+    return (!isNaN(sq) && !isNaN(sp) && avgCost !== null) ? s + (sp - avgCost) * sq : s;
+  }, 0);
+}
+function hasSellData(sellRows, avgCost) {
+  return avgCost !== null && sellRows.some(r => parseFloat(r.sellQty) > 0 && parseFloat(r.sellPrice) > 0);
+}
+
+// ── Render helpers ──
+function hex(color, alpha) {
+  // convert #RRGGBB + alpha to rgba
+  const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function renderBuySection(asset, block) {
+  const avgCost = calcAvgCost(asset.buyRows);
+  const rows = asset.buyRows.map((row, i) => {
+    const p = parseFloat(row.buyPrice), q = parseFloat(row.buyQty);
+    const principal = (!isNaN(p) && !isNaN(q) && p > 0 && q > 0) ? (p * q).toFixed(2) : '';
+    const delBtn = asset.buyRows.length > 1
+      ? `<button class="del-btn" onclick="deleteBuyRow('${block.id}','${asset.id}','${row.id}')">✕</button>` : '';
+    return `<tr style="background:${i%2===0 ? hex(block.accent,0.04) : 'transparent'}">
+      <td><input type="date" value="${row.date}" onchange="updateBuyRow('${block.id}','${asset.id}','${row.id}','date',this.value)" style="font-size:12px"></td>
+      <td><input type="number" value="${principal}" readonly placeholder="自動" style="text-align:right;color:#A5D6A7;background:rgba(255,255,255,0.04);border-radius:3px"></td>
+      <td><input type="number" value="${row.buyQty}" placeholder="" style="text-align:right" onchange="updateBuyRow('${block.id}','${asset.id}','${row.id}','buyQty',this.value)"></td>
+      <td><input type="number" value="${row.buyPrice}" placeholder="" style="text-align:right" onchange="updateBuyRow('${block.id}','${asset.id}','${row.id}','buyPrice',this.value)"></td>
+      <td><input type="text" value="${row.reason||''}" placeholder="備註…" style="color:#B0BEC5" onchange="updateBuyRow('${block.id}','${asset.id}','${row.id}','reason',this.value)"></td>
+      <td style="text-align:center;width:28px">${delBtn}</td>
+    </tr>`;
+  }).join('');
+
+  const avgHtml = avgCost !== null
+    ? `<div class="avg-cost-box"><span class="avg-cost-label">平均進場價格 <span style="font-size:9px;opacity:0.5">Avg Entry</span></span><span class="avg-cost-val">${avgCost.toFixed(4)}</span><span class="avg-cost-cur">${block.currency}</span></div>`
+    : `<div class="avg-cost-box"><span class="avg-cost-label">平均進場價格 <span style="font-size:9px;opacity:0.5">Avg Entry</span></span><span class="avg-cost-val">—</span></div>`;
+
+  return `
+    <div class="section-label">
+      <div class="section-bar" style="background:#4CAF50"></div>
+      <span class="section-title" style="color:#81C784">買入 <span style="font-size:9px;opacity:0.5;font-weight:400">BUY</span></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <colgroup>
+          <col id="col-date-buy-${asset.id}">
+          <col id="col-prin-${asset.id}">
+          <col id="col-bqty-${asset.id}">
+          <col id="col-bprice-${asset.id}">
+          <col id="col-bnotes-${asset.id}">
+          <col style="width:28px">
+        </colgroup>
+        <thead><tr>
+          <th>日期 <span style="font-size:8px;opacity:0.5">Date</span></th>
+          <th style='text-align:right'>本金 <span style="font-size:8px;opacity:0.5">(${block.currency})</span></th>
+          <th style='text-align:right'>${block.qtyLabel}</th>
+          <th style='text-align:right'>價格 <span style="font-size:8px;opacity:0.5">Price</span></th>
+          <th>備註 <span style="font-size:8px;opacity:0.5">Note</span></th>
+          <th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div class="section-footer">
+      <button class="add-row-btn" style="border-color:rgba(76,175,80,0.4);color:rgba(76,175,80,0.7)"
+        onclick="addBuyRow('${block.id}','${asset.id}')">＋ 新增買入 <span style="font-size:9px;opacity:0.6">Add Buy</span></button>
+      <div style="display:flex;gap:8px;align-items:center;width:100%">
+        <div style="flex:3">${avgHtml}</div>
+        <div style="flex:1;min-width:0;background:rgba(255,183,77,0.1);border:1px solid rgba(255,183,77,0.35);border-radius:6px;padding:4px 10px;font-size:12px;display:flex;align-items:center;gap:6px;justify-content:space-between">
+          <span style="color:#546E7A;white-space:nowrap">目標價格 <span style="font-size:9px;opacity:0.5">Target</span></span>
+          <input type="number" value="${asset.targetPrice||''}" placeholder="—"
+            oninput="updateAssetField('${block.id}','${asset.id}','targetPrice',this.value)"
+            onclick="event.stopPropagation()"
+            style="background:transparent;border:1px solid rgba(255,183,77,0.3);border-radius:4px;outline:none;color:#FFB74D;font-weight:700;font-family:inherit;font-size:12px;width:70px;text-align:right;padding:2px 4px;-webkit-appearance:none">
+          <span style="color:#37474F;font-size:9px">${block.currency}</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderSellSection(asset, block) {
+  const avgCost = calcAvgCost(asset.buyRows);
+  const sellQtyLabel = block.qtyLabel.replace('買入','賣出');
+  const rows = asset.sellRows.map((row, i) => {
+    const sq = parseFloat(row.sellQty), sp = parseFloat(row.sellPrice);
+    const pnl = (!isNaN(sq) && !isNaN(sp) && avgCost !== null) ? (sp - avgCost) * sq : null;
+    const pnlColor = pnl === null ? '#546E7A' : pnl >= 0 ? '#A5D6A7' : '#EF9A9A';
+    const pnlText  = pnl === null ? '—' : (pnl >= 0 ? '+' : '') + pnl.toFixed(2);
+    const delBtn = asset.sellRows.length > 1
+      ? `<button class="del-btn" onclick="deleteSellRow('${block.id}','${asset.id}','${row.id}')">✕</button>` : '';
+    return `<tr style="background:${i%2===0 ? 'rgba(239,83,80,0.04)' : 'transparent'}">
+      <td><input type="date" value="${row.date}" onchange="updateSellRow('${block.id}','${asset.id}','${row.id}','date',this.value)" style="font-size:12px"></td>
+      <td><input type="number" value="${row.sellQty}" placeholder="" style="text-align:right" onchange="updateSellRow('${block.id}','${asset.id}','${row.id}','sellQty',this.value)"></td>
+      <td><input type="number" value="${row.sellPrice}" placeholder="" style="text-align:right" onchange="updateSellRow('${block.id}','${asset.id}','${row.id}','sellPrice',this.value)"></td>
+      <td class="pnl-cell" style="color:${pnlColor}">${pnlText}</td>
+      <td><input type="text" value="${row.reason||''}" placeholder="備註…" style="color:#B0BEC5" onchange="updateSellRow('${block.id}','${asset.id}','${row.id}','reason',this.value)"></td>
+      <td style="text-align:center;width:28px">${delBtn}</td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div class="section-label">
+      <div class="section-bar" style="background:#EF5350"></div>
+      <span class="section-title" style="color:#EF9A9A">賣出 <span style="font-size:9px;opacity:0.5;font-weight:400">SELL</span></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th style='min-width:90px'>日期 <span style="font-size:8px;opacity:0.5">Date</span></th><th style='text-align:right'>${sellQtyLabel}</th><th style='text-align:right'>價格 <span style="font-size:8px;opacity:0.5">Price</span></th><th style='text-align:right'>損益 <span style="font-size:8px;opacity:0.5">P&L</span>(${block.currency})</th><th>備註 <span style="font-size:8px;opacity:0.5">Note</span></th><th></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div class="section-footer">
+      <button class="add-row-btn" style="border-color:rgba(239,83,80,0.4);color:rgba(239,83,80,0.7)"
+        onclick="addSellRow('${block.id}','${asset.id}')">＋ 新增賣出 <span style="font-size:9px;opacity:0.6">Add Sell</span></button>
+    </div>`;
+}
+
+function renderAsset(asset, block) {
+  const avgCost = calcAvgCost(asset.buyRows);
+  const totalPnl = calcPnl(asset.sellRows, avgCost);
+  const showPnl  = hasSellData(asset.sellRows, avgCost);
+  const pnlBadge = showPnl
+    ? `<span class="pnl-badge" style="color:${totalPnl>=0?'#A5D6A7':'#EF9A9A'};background:${totalPnl>=0?'rgba(76,175,80,0.15)':'rgba(239,83,80,0.15)'}">
+        ${totalPnl>=0?'▲ +':'▼ '}${totalPnl.toFixed(2)} ${block.currency}
+       </span>` : '';
+
+  return `
+    <div class="asset-block" id="asset-${asset.id}" style="border:1px solid ${hex(block.accent,0.2)};background:rgba(0,0,0,0.25)">
+      <div class="asset-header" style="background:linear-gradient(90deg,${hex(block.accent,0.1)},transparent);border-bottom:1px solid ${hex(block.accent,0.15)}"
+           onclick="toggleAsset('${asset.id}')">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span id="arrow-${asset.id}" class="arrow" style="color:${block.accent}">▼</span>
+          <span class="asset-name" style="color:${block.accent}">${asset.name}</span>
+          ${pnlBadge}
+        </div>
+        <button class="delete-asset-btn" onclick="event.stopPropagation();deleteAsset('${block.id}','${asset.id}')">刪除 <span style="font-size:9px;opacity:0.6">Del</span></button>
+      </div>
+      <div id="body-${asset.id}" class="asset-body">
+        ${renderBuySection(asset, block)}
+        <div class="section-divider"></div>
+        ${renderSellSection(asset, block)}
+      </div>
+    </div>`;
+}
+
+function renderBlock(block) {
+  const assets = data[block.id];
+  const isAdding = addingBlock === block.id;
+  const addBar = isAdding ? `
+    <div class="add-asset-bar" style="background:${hex(block.accent,0.05)};border-color:${hex(block.accent,0.15)}">
+      <span style="color:${block.accent};font-size:11px">標的名稱 <span style="font-size:9px;opacity:0.5">Name</span>：</span>
+      <input id="new-asset-${block.id}" placeholder="${block.id==='crypto'?'e.g. Doge, XRP':block.id==='tw'?'e.g. 2330, 0050':'e.g. AAPL, NVDA'}"
+        style="background:rgba(255,255,255,0.06);border-color:${hex(block.accent,0.4)}"
+        onkeydown="handleAddKey(event,'${block.id}')" autofocus>
+      <button class="confirm-btn" style="background:${block.accent}" onclick="confirmAddAsset('${block.id}')">建立</button>
+      <button class="cancel-btn" onclick="cancelAdd()">取消</button>
+    </div>` : '';
+
+  const assetsHtml = assets.length === 0
+    ? `<div class="empty-msg">點擊「新增標的」開始記錄</div>`
+    : assets.map(a => renderAsset(a, block)).join('');
+
+  return `
+    <div class="main-block" style="background:linear-gradient(160deg,${block.dark} 0%,#06080f 100%);border:1px solid ${hex(block.accent,0.2)};box-shadow:0 8px 40px ${block.glow}">
+      <div class="main-header" style="border-bottom:1px solid ${hex(block.accent,0.15)}" onclick="toggleBlock('${block.id}')">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+          <span id="block-arrow-${block.id}" style="color:${block.accent};font-size:13px;margin-right:6px">▼</span>
+          <span class="main-title" style="color:${block.accent}">${block.label} <span style="font-size:11px;opacity:0.4;font-weight:400">${block.sub}</span></span>
+          
+          <span class="main-count">${assets.length} 個標的</span>
+        </div>
+        <button class="add-main-btn" style="background:${hex(block.accent,0.15)};border-color:${hex(block.accent,0.4)};color:${block.accent}"
+          onclick="event.stopPropagation();startAdd('${block.id}')">＋ 新增標的 <span style="font-size:9px;opacity:0.6">Add</span></button>
+      </div>
+      ${addBar}
+      <div id="block-body-${block.id}" class="main-body">${assetsHtml}</div>
+    </div>`;
+}
+
+// ── Full render ──
+function render() {
+  const app = document.getElementById('app');
+
+  // Update save status span color
+  const statusEl = document.getElementById('save-status');
+  const statusText = statusEl ? statusEl.textContent : '✓ 已自動儲存';
+  const statusColor = statusEl ? statusEl.style.color : '#4CAF50';
+
+  const tagsHtml = BLOCKS.map(b =>
+    `<span class="tag" style="background:${hex(b.accent,0.1)};border:1px solid ${hex(b.accent,0.25)};color:${b.accent}">${b.label} · ${data[b.id].length} 標的</span>`
+  ).join('');
+
+  app.innerHTML = `
+    <div class="page-label">PORTFOLIO TRADING LEDGER</div>
+    <div class="header-top">
+      <div class="page-title">交易帳本 <span style="font-size:13px;opacity:0.4;font-weight:400">Record</span></div>
+      <span id="save-status" class="save-status" style="color:${statusColor}">${statusText}</span>
+    </div>
+    <div class="tag-row">
+      ${tagsHtml}
+      <div class="btn-row">
+        <button class="btn" style="background:rgba(79,195,247,0.1);border:1px solid rgba(79,195,247,0.3);color:#4FC3F7" onclick="exportJSON()">↓ 備份 <span style="font-size:9px;opacity:0.6">Backup</span></button>
+        <button class="btn" style="background:rgba(255,183,77,0.1);border:1px solid rgba(255,183,77,0.3);color:#FFB74D" onclick="document.getElementById('import-input').click()">↑ 匯入 <span style="font-size:9px;opacity:0.6">Import</span></button>
+        <button class="btn" style="background:rgba(239,83,80,0.08);border:1px solid rgba(239,83,80,0.25);color:#EF5350" onclick="resetAll()">🗑 清除 <span style="font-size:9px;opacity:0.6">Reset</span></button>
+        <input id="import-input" type="file" accept=".json" style="display:none" onchange="importJSON(event)">
+      </div>
+    </div>
+    <div class="divider-rainbow"></div>
+    <div style="height:16px"></div>
+    ${BLOCKS.map(b => renderBlock(b)).join('')}
+    <div class="footer-note">資料自動儲存於瀏覽器 · 定期點擊「備份 JSON」以防萬一</div>
+  `;
+
+  // Restore collapsed states
+  Object.keys(collapsedBlocks).forEach(id => {
+    if (collapsedBlocks[id]) {
+      const body = document.getElementById('block-body-' + id);
+      const arrow = document.getElementById('block-arrow-' + id);
+      if (body) body.style.display = 'none';
+      if (arrow) arrow.textContent = '▶';
+    }
+  });
+  Object.keys(collapsedAssets).forEach(id => {
+    if (collapsedAssets[id]) {
+      const body = document.getElementById('body-' + id);
+      const arrow = document.getElementById('arrow-' + id);
+      if (body) body.style.display = 'none';
+      if (arrow) arrow.textContent = '▶';
+    }
+  });
+
+  // Focus new asset input if adding
+  if (addingBlock) {
+    const inp = document.getElementById('new-asset-' + addingBlock);
+    if (inp) setTimeout(() => inp.focus(), 50);
+  }
+  setTimeout(autoResizeAll, 50);
+}
+
+// ── Collapse state ──
+const collapsedBlocks = {};
+const collapsedAssets = {};
+
+function toggleBlock(id) {
+  collapsedBlocks[id] = !collapsedBlocks[id];
+  const body = document.getElementById('block-body-' + id);
+  const arrow = document.getElementById('block-arrow-' + id);
+  if (body)  body.style.display  = collapsedBlocks[id] ? 'none' : '';
+  if (arrow) arrow.textContent   = collapsedBlocks[id] ? '▶' : '▼';
+}
+function toggleAsset(id) {
+  collapsedAssets[id] = !collapsedAssets[id];
+  const body = document.getElementById('body-' + id);
+  const arrow = document.getElementById('arrow-' + id);
+  if (body)  body.style.display  = collapsedAssets[id] ? 'none' : '';
+  if (arrow) arrow.textContent   = collapsedAssets[id] ? '▶' : '▼';
+}
+
+// ── Add asset ──
+function startAdd(blockId) { addingBlock = blockId; render(); }
+function cancelAdd() { addingBlock = null; render(); }
+function handleAddKey(e, blockId) {
+  if (e.key === 'Enter') confirmAddAsset(blockId);
+  if (e.key === 'Escape') cancelAdd();
+}
+function confirmAddAsset(blockId) {
+  const inp = document.getElementById('new-asset-' + blockId);
+  const name = inp ? inp.value.trim() : '';
+  if (!name) return;
+  data[blockId].push(emptyAsset(name));
+  addingBlock = null;
+  saveData(); render();
+}
+function deleteAsset(blockId, assetId) {
+  if (!confirm('確定刪除此標的？')) return;
+  data[blockId] = data[blockId].filter(a => a.id !== assetId);
+  saveData(); render();
+}
+
+// ── Row mutations ──
+function updateBuyRow(bid, aid, rid, key, val) {
+  const asset = data[bid].find(a => a.id === aid); if (!asset) return;
+  const row   = asset.buyRows.find(r => r.id === rid); if (!row) return;
+  row[key] = val;
+  // Re-render just this asset's buy section for performance
+  const block = BLOCKS.find(b => b.id === bid);
+  const buyEl = document.getElementById('body-' + aid);
+  if (buyEl && block) {
+    buyEl.innerHTML = renderBuySection(asset, block) + '<div class="section-divider"></div>' + renderSellSection(asset, block);
+    // update pnl badge in header
+    updateAssetHeader(asset, block);
+  }
+  saveData();
+}
+function updateSellRow(bid, aid, rid, key, val) {
+  const asset = data[bid].find(a => a.id === aid); if (!asset) return;
+  const row   = asset.sellRows.find(r => r.id === rid); if (!row) return;
+  row[key] = val;
+  const block = BLOCKS.find(b => b.id === bid);
+  const bodyEl = document.getElementById('body-' + aid);
+  if (bodyEl && block) {
+    bodyEl.innerHTML = renderBuySection(asset, block) + '<div class="section-divider"></div>' + renderSellSection(asset, block);
+    updateAssetHeader(asset, block);
+  }
+  saveData();
+}
+function addBuyRow(bid, aid) {
+  const asset = data[bid].find(a => a.id === aid); if (!asset) return;
+  const block = BLOCKS.find(b => b.id === bid);
+  const qtyLabel = block.qtyLabel.replace('買入','');
+  const date = prompt('📅 操作日期（YYYY-MM-DD）', new Date().toISOString().slice(0,10));
+  if (date === null) return;
+  const qty = prompt('📦 ' + block.qtyLabel.replace(/<[^>]+>/g,'').trim());
+  if (qty === null) return;
+  const price = prompt('💰 買入價格');
+  if (price === null) return;
+  const reason = prompt('📝 操作備註（可空白）');
+  if (reason === null) return;
+  const row = emptyBuyRow();
+  row.date = date;
+  row.buyQty = qty;
+  row.buyPrice = price;
+  row.reason = reason;
+  asset.buyRows.push(row);
+  const bodyEl = document.getElementById('body-' + aid);
+  if (bodyEl && block) { bodyEl.innerHTML = renderBuySection(asset, block) + '<div class="section-divider"></div>' + renderSellSection(asset, block); setTimeout(() => autoResizeCols(aid, block, asset), 0); }
+  saveData();
+}
+function addSellRow(bid, aid) {
+  const asset = data[bid].find(a => a.id === aid); if (!asset) return;
+  const block = BLOCKS.find(b => b.id === bid);
+  const sellQtyLabel = block.qtyLabel.replace('買入','賣出');
+  const date = prompt('📅 操作日期（YYYY-MM-DD）', new Date().toISOString().slice(0,10));
+  if (date === null) return;
+  const sellQtyLabelClean = block.qtyLabel.replace('買入','賣出').replace(/<[^>]+>/g,'').trim();
+  const qty = prompt('📦 ' + sellQtyLabelClean);
+  if (qty === null) return;
+  const price = prompt('💰 賣出價格');
+  if (price === null) return;
+  const reason = prompt('📝 操作備註（可空白）');
+  if (reason === null) return;
+  const row = emptySellRow();
+  row.date = date;
+  row.sellQty = qty;
+  row.sellPrice = price;
+  row.reason = reason;
+  asset.sellRows.push(row);
+  const bodyEl = document.getElementById('body-' + aid);
+  if (bodyEl && block) { bodyEl.innerHTML = renderBuySection(asset, block) + '<div class="section-divider"></div>' + renderSellSection(asset, block); setTimeout(() => autoResizeCols(aid, block, asset), 0); }
+  saveData();
+}
+function deleteBuyRow(bid, aid, rid) {
+  const asset = data[bid].find(a => a.id === aid); if (!asset) return;
+  asset.buyRows = asset.buyRows.filter(r => r.id !== rid);
+  const block = BLOCKS.find(b => b.id === bid);
+  const bodyEl = document.getElementById('body-' + aid);
+  if (bodyEl && block) { bodyEl.innerHTML = renderBuySection(asset, block) + '<div class="section-divider"></div>' + renderSellSection(asset, block); setTimeout(() => autoResizeCols(aid, block, asset), 0); }
+  saveData();
+}
+function deleteSellRow(bid, aid, rid) {
+  const asset = data[bid].find(a => a.id === aid); if (!asset) return;
+  asset.sellRows = asset.sellRows.filter(r => r.id !== rid);
+  const block = BLOCKS.find(b => b.id === bid);
+  const bodyEl = document.getElementById('body-' + aid);
+  if (bodyEl && block) bodyEl.innerHTML = renderBuySection(asset, block) + '<div class="section-divider"></div>' + renderSellSection(asset, block);
+  saveData();
+}
+function updateAssetHeader(asset, block) {
+  // update pnl badge without full re-render
+  const header = document.querySelector(`#asset-${asset.id} .asset-header`);
+  if (!header) return;
+  const avgCost  = calcAvgCost(asset.buyRows);
+  const totalPnl = calcPnl(asset.sellRows, avgCost);
+  const showPnl  = hasSellData(asset.sellRows, avgCost);
+  const badge = header.querySelector('.pnl-badge');
+  if (showPnl) {
+    const html = `${totalPnl>=0?'▲ +':'▼ '}${totalPnl.toFixed(2)} ${block.currency}`;
+    if (badge) {
+      badge.textContent = html;
+      badge.style.color = totalPnl>=0?'#A5D6A7':'#EF9A9A';
+      badge.style.background = totalPnl>=0?'rgba(76,175,80,0.15)':'rgba(239,83,80,0.15)';
+    } else {
+      const span = document.createElement('span');
+      span.className = 'pnl-badge';
+      span.style.cssText = `color:${totalPnl>=0?'#A5D6A7':'#EF9A9A'};background:${totalPnl>=0?'rgba(76,175,80,0.15)':'rgba(239,83,80,0.15)'}`;
+      span.textContent = html;
+      header.querySelector('div').appendChild(span);
+    }
+  } else if (badge) badge.remove();
+}
+
+// ── Update asset field ──
+function updateAssetField(bid, aid, key, val) {
+  const asset = data[bid].find(a => a.id === aid); if (!asset) return;
+  asset[key] = val;
+  saveData();
+}
+
+// ── Reset ──
+function resetAll() {
+  if (!confirm('確定清除所有資料？')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  data = { crypto: [], tw: [], us: [] };
+  render();
+  updateSaveStatus('saved');
+}
+
+// ── Date helpers ──
+function fmtDate(val) {
+  if (!val) return '';
+  const [y, m, d] = val.split('-');
+  if (!y || !m || !d) return val;
+  return y + '年' + parseInt(m) + '月' + parseInt(d) + '日';
+}
+function openDatePicker(textInput, bid, aid, rid, type) {
+  const dp = document.getElementById('dp-' + rid);
+  if (!dp) return;
+  dp.showPicker ? dp.showPicker() : dp.click();
+}
+function onDatePick(dpInput, bid, aid, rid, type) {
+  const val = dpInput.value;
+  if (type === 'buy') updateBuyRow(bid, aid, rid, 'date', val);
+  else updateSellRow(bid, aid, rid, 'date', val);
+}
+
+// ── Column auto-resize ──
+const _canvas = document.createElement('canvas');
+const _ctx = _canvas.getContext('2d');
+
+function measureText(str, fontSize) {
+  _ctx.font = (fontSize||13) + "px 'Courier New', monospace";
+  // Chinese chars are wider, apply 1.3x multiplier for safety
+  return _ctx.measureText(String(str)).width;
+}
+
+function autoResizeCols(assetId, block, asset) {
+  // For each column id, gather all values, find max width, set col width
+  const PAD = 24; // left+right padding
+  const HEADER_FONT = 11;
+  const DATA_FONT = 13;
+
+  const buyColDefs = [
+    { id: 'col-date-buy-'  + assetId, header: '日期 Date',         values: asset.buyRows.map(r => r.date ? '2026/06/07' : '') },
+    { id: 'col-prin-'      + assetId, header: '本金 (USDT)',               values: asset.buyRows.map(r => { const p=parseFloat(r.buyPrice),q=parseFloat(r.buyQty); return (p>0&&q>0)?(p*q).toFixed(2):''; }) },
+    { id: 'col-bqty-'      + assetId, header: block.qtyLabel.replace(/<[^>]+>/g,''), values: asset.buyRows.map(r => r.buyQty || '') },
+    { id: 'col-bprice-'    + assetId, header: '價格 Price',         values: asset.buyRows.map(r => r.buyPrice || '') },
+    { id: 'col-bnotes-'    + assetId, header: '備註 Note',          values: asset.buyRows.map(r => r.reason || '') },
+  ];
+  const sellColDefs = [
+    { id: 'col-date-sell-' + assetId, header: '日期 Date',          values: asset.sellRows.map(r => r.date ? '2026/06/07' : '') },
+    { id: 'col-sqty-'      + assetId, header: block.qtyLabel.replace('買入','賣出').replace(/<[^>]+>/g,''), values: asset.sellRows.map(r => r.sellQty || '') },
+    { id: 'col-sprice-'    + assetId, header: '價格 Price',         values: asset.sellRows.map(r => r.sellPrice || '') },
+    { id: 'col-pnl-'       + assetId, header: '損益',               values: asset.sellRows.map(r => { const sq=parseFloat(r.sellQty),sp=parseFloat(r.sellPrice),avg=calcAvgCost(asset.buyRows); return (avg&&!isNaN(sq)&&!isNaN(sp))?((sp-avg)*sq).toFixed(2):''; }) },
+    { id: 'col-snotes-'    + assetId, header: '備註 Note',          values: asset.sellRows.map(r => r.reason || '') },
+  ];
+
+  [...buyColDefs, ...sellColDefs].forEach(def => {
+    const el = document.getElementById(def.id);
+    if (!el) return;
+    const headerW = measureText(def.header, HEADER_FONT);
+    const maxDataW = def.values.reduce((max, v) => Math.max(max, measureText(v, DATA_FONT)), 0);
+    const w = Math.max(headerW, maxDataW) * 1.5 + PAD;
+    el.style.width = w + 'px';
+  });
+}
+
+function autoResizeAll() {
+  BLOCKS.forEach(block => {
+    data[block.id].forEach(asset => autoResizeCols(asset.id, block, asset));
+  });
+}
+
+// ── Boot ──
+loadData();
+render();
+setTimeout(autoResizeAll, 50);
+</script>
+</body>
+</html>
